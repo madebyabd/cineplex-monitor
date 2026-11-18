@@ -42,7 +42,7 @@ def send_telegram(message):
         print(f"[{time.strftime('%H:%M:%S')}] Telegram error: {e}")
 
 async def check_cineplex_dom(page):
-    response = await page.goto(TARGET_URL, wait_until="domcontentloaded", timeout=30000)
+    response = await page.goto(TARGET_URL, wait_until="domcontentloaded", timeout=45000)
 
     # Anti-Bot / Rate-Limit checks
     if response and response.status in (403, 429, 503):
@@ -53,40 +53,37 @@ async def check_cineplex_dom(page):
     if any(sig in page_title for sig in waf_signatures):
         raise RateLimitedException(f"Security challenge page detected in title: '{page_title}'")
 
-    # Allow client-side framework to hydrate components
-    await asyncio.sleep(2) 
+    # INCREASED: Give the slow residential proxy 8 seconds to fully execute JavaScript
+    await asyncio.sleep(8) 
     
     html = await page.content()
     soup = BeautifulSoup(html, "html.parser")
     
-    reasons = []
+    critical_triggers = []
 
     # 1. PRIMARY TARGET: #showtimes Section 
     showtimes_sec = soup.find("section", id="showtimes")
     
-    if not showtimes_sec:
-        reasons.append("The entire <section id='showtimes'> vanished or was renamed!")
-    else:
-        placeholder_text = showtimes_sec.find(string=re.compile(r"Bookings open closer to release", re.IGNORECASE))
-        if not placeholder_text:
-            reasons.append("Placeholder text 'Bookings open closer to release' is GONE!")
-            
-        if showtimes_sec.find("div", attrs={"aria-live": "polite"}):
-            reasons.append("Active branch container (aria-live='polite') detected!")
-            
+    if showtimes_sec:
+        # ONLY alert if actual ticket buttons appear (positive trigger)
         stubs = showtimes_sec.find_all("button", class_=re.compile(r"stub"))
         if stubs:
-            reasons.append(f"Found {len(stubs)} clickable showtime buttons!")
+            critical_triggers.append(f"Found {len(stubs)} clickable showtime buttons!")
+            
+        # ONLY alert if the live dynamic container appears (positive trigger)
+        if showtimes_sec.find("div", attrs={"aria-live": "polite"}):
+            critical_triggers.append("Active branch container (aria-live='polite') detected!")
 
     # 2. SECONDARY TARGET: Top Hero Badge
     eyebrow = soup.find("span", class_=re.compile(r"editorial-eyebrow"))
     if eyebrow:
         eyebrow_text = eyebrow.get_text(strip=True).lower()
         if "coming soon" not in eyebrow_text:
-            reasons.append(f"Top badge changed to: '{eyebrow.get_text(strip=True)}'")
+            critical_triggers.append(f"Top badge changed to: '{eyebrow.get_text(strip=True)}'")
 
-    if reasons:
-        return True, "\n• ".join(reasons)
+    # If any positive signs of a ticket drop are found, sound the alarm
+    if critical_triggers:
+        return True, "\n• ".join(critical_triggers)
 
     return False, None
 
