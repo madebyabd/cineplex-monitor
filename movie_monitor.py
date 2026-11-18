@@ -16,6 +16,9 @@ BOT_TOKEN = os.getenv("BOT_TOKEN")
 CHAT_ID = os.getenv("CHAT_ID")
 TARGET_URL = os.getenv("TARGET_URL")
 RUN_ONCE = os.getenv("RUN_ONCE", "false").lower() in ("true", "1", "yes")
+PROXY_SERVER = os.getenv("PROXY_SERVER")
+PROXY_USERNAME = os.getenv("PROXY_USERNAME")
+PROXY_PASSWORD = os.getenv("PROXY_PASSWORD")
 
 if not BOT_TOKEN or not CHAT_ID:
     raise ValueError("Missing Telegram credentials! Please ensure BOT_TOKEN and CHAT_ID are set in .env or environment variables.")
@@ -93,7 +96,17 @@ async def main():
         print("ℹ️ Running in single-check mode (RUN_ONCE=true).")
 
     async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=True)
+        # Build proxy config if credentials are provided
+        proxy_config = None
+        if PROXY_SERVER:
+            proxy_config = {"server": PROXY_SERVER}
+            if PROXY_USERNAME:
+                proxy_config["username"] = PROXY_USERNAME
+            if PROXY_PASSWORD:
+                proxy_config["password"] = PROXY_PASSWORD
+            print(f"🌐 Using proxy: {PROXY_SERVER}")
+
+        browser = await p.chromium.launch(headless=True, proxy=proxy_config)
         context = await browser.new_context(
             user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
         )
