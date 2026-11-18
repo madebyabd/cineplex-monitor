@@ -91,6 +91,10 @@ async def main():
     print(f"🚀 Initializing Cineplex Monitor for: {MOVIE_NAME}...")
     if RUN_ONCE:
         print("ℹ️ Running in single-check mode (RUN_ONCE=true).")
+        # Add random human variation to scramble the GitHub cron schedule
+        jitter = random.randint(5, 120)
+        print(f"🎲 Adding random human delay of {jitter} seconds before connecting...")
+        await asyncio.sleep(jitter)
 
     async with async_playwright() as p:
         # Build proxy config if credentials are provided
@@ -108,6 +112,14 @@ async def main():
             user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
         )
         page = await context.new_page()
+
+        # Block heavy visual resources to save proxy bandwidth
+        await page.route(
+            "**/*",
+            lambda route: route.abort()
+            if route.request.resource_type in ["image", "media", "font", "stylesheet"]
+            else route.continue_()
+        )
 
         print(f"🟢 Connected. Monitoring DOM for {MOVIE_NAME}...")
 
