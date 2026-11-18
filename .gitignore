@@ -1,0 +1,14 @@
+.env
+venv/
+__pycache__/
+*.pyc
+
+# Debug / research files (not needed in production)
+*.html
+debug.py
+check.py
+debug_output.html
+download_html.py
+chunk1.txt
+chunk2.txt
+ntg.txt
