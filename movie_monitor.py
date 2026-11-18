@@ -157,11 +157,17 @@ async def main():
                 # Generous backoff for bot bans or rate limits: 15 to 25 minutes
                 cooldown_sec = random.randint(900, 1500)
                 print(f"[{time.strftime('%H:%M:%S')}] 🛡️ [ANTI-BAN TRIGGERED] {e}")
-                print(f"[{time.strftime('%H:%M:%S')}] Pausing monitor for {cooldown_sec // 60} minutes to allow IP cooldown...")
                 send_telegram(
                     f"⚠️ [MONITOR PAUSED] Star Cineplex / Cloudflare rate limit detected ({e}).\n"
                     f"Entering {cooldown_sec // 60}-minute cooldown to prevent IP ban."
                 )
+
+                if RUN_ONCE:
+                    print(f"[{time.strftime('%H:%M:%S')}] Exiting immediately in RUN_ONCE mode (cooldown handled by schedule).")
+                    await browser.close()
+                    return
+
+                print(f"[{time.strftime('%H:%M:%S')}] Pausing monitor for {cooldown_sec // 60} minutes to allow IP cooldown...")
                 await asyncio.sleep(cooldown_sec)
 
                 # Reset page context to clear flagged cookies / session tokens
